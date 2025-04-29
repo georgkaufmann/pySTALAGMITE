@@ -256,5 +256,49 @@ def plotStalagmite2D(stal,iSaved,tSaved,sidex,title='Stalagmite shape'):
     plt.legend(bbox_to_anchor=(1.4,1.0))
     plt.grid()
     return
+
+
 #================================#
+def plotStalagmiteAges2D(stal,iSaved,tSaved,sidex,title='Stalagmite (flow)'): 
+    import matplotlib
+    colors = [
+    ( 0 , 0 , 1 ),
+    ( 0 , 0.196078 , 1 ),
+    ( 0 , 0.392157 , 1 ),
+    ( 0 , 0.588235 , 1 ),
+    ( 0 , 0.784314 , 0.784314 ),
+    ( 0 , 1 , 0 ),
+    ( 0 , 0.862745 , 0 ),
+    ( 0 , 0.784314 , 0 ),
+    ( 0 , 0.588235 , 0 ),
+    ( 0 , 0.392157 , 0 ),
+    ( 1 , 0.784314 , 0 ),
+    ( 1 , 0.588235 , 0 ),
+    ( 1 , 0.392157 , 0 ),
+    ( 1 , 0.196078 , 0 ),
+    ( 1 , 0 , 0 )]
+    cmap = matplotlib.colors.ListedColormap(colors[::-1])
+    ncolors = cmap.N
+    #cmap = plt.get_cmap('tab20', ncolors)
+    bounds = np.linspace(0,10, ncolors)
+    norm = mpl.colors.BoundaryNorm(bounds,ncolors)
+
+    plt.figure(figsize=(4,4))
+    plt.title(title)
+    plt.xlim([-sidex/4,sidex/4])
+    plt.ylim([0.0,2.5])
+    plt.xlabel('Radius [m]')
+    plt.ylabel('Height [m]')
+    for i in range(iSaved,0,-1):
+        t = int(-tSaved[i]/1000)
+        x  = np.r_[-stal[:,0,i][::-1],stal[:,0,i]]
+        y1 = np.r_[stal[:,1,i][::-1],stal[:,1,i]]
+        y2 = np.r_[stal[:,1,i-1][::-1],stal[:,1,i-1]]
+        cs1=plt.fill_between(x,y1,0,cmap=cmap,color=cmap.colors[t],norm=norm,alpha=1)
+        plt.plot(x,y1,lw=1,color='black',alpha=0.5)
+    plt.colorbar(cs1,shrink=0.8,format='%4.1f',label='Age [ka BP]')
+    plt.grid()
+    return
+
+
 #================================#
