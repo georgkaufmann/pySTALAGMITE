@@ -16,7 +16,9 @@ def readParameter2D(infile='STALAGMITE_parameter.in',path='work/',control=False)
     """
     ! read STALAGMITE parameter file
     ! input:
-    !  (from file infile)
+    !  infile               - filename (default: STALAGMITE_parameter.in)
+    !  path                 - filepath (default: work/)
+    !  control              - control flag for output
     ! output:
     !  xmin,xmax,nx         - min/max for x coordinate [m], discretisation
     !  whichtime            - flag for time units used
@@ -81,9 +83,12 @@ def readTimeline2D(infile='STALAGMITE_timeline.in',path='work/',control=False):
     """
     ! read STALAGMITE timeline file
     ! input:
-    !  (from file infile) 
+    !  infile               - filename (default: STALAGMITE_parameter.in)
+    !  path                 - filepath (default: work/)
+    !  control              - control flag for output
     ! output:
-    !  timeStart,timeEnd   - start/end point for time scale [s]    
+    !  timeStart,timeEnd    - start/end point for time scale [s]
+    !  rawTimeline          - array of timeline data
     ! use:
     !  timeStart,timeEnd,rawTimeline = libSTALAGMITE.readTimeline2D()
     ! note:
@@ -140,7 +145,7 @@ def refineGrid2D(x,y):
     ! output:
     !  x,y [m]     : new x- and y-coordinates
     ! use:
-    !  x,y = libSTALAGMITED.refineGrid2D(x,y)
+    !  x,y = libSTALAGMITE.refineGrid2D(x,y)
     """
     xnew = 0.5*(x[0]+x[1])
     ynew = 0.5*(y[0]+y[1])
@@ -150,6 +155,60 @@ def refineGrid2D(x,y):
     x[1] = xnew
     y[1] = ynew
     return x,y
+
+
+#================================#
+def setClimate2D(time,timeStart,timeEnd,
+               TSoilmin,TSoilmax,
+               PSoilmin,PSoilmax,
+               TCavemin,TCavemax,
+               PCavemin,PCavemax,
+               DCavemin,DCavemax,
+               rawTimeline=np.array([[-999,-999],[-999,-999]]),
+               climate='simple'):
+    """
+    ! function sets climate conditions for a given time
+    ! input:
+    !  time,timeStart,timeEnd [a]     : current time, time limits
+    !  TSoilmin,TSoilmax [C]          : Soil temperature (min/max)
+    !  PSoilmin,PSoilmax [ppm]        : Soil CO2 (min/max)
+    !  TCavemin,TCavemax [C]          : Cave temperature (min/max)
+    !  PCavemin,PCavemax [ppm]        : Cave CO2 (min/max)
+    !  DCavemin,DCavemax [s]          : Cave drip interval (min/max)
+    !  rawTimeline                    : times and soil temperature from file
+    !  climate                        : flag for climate type
+    ! output:
+    !  TSoil     : Soil temperature
+    !  PSoil     : Soil CO2
+    !  TCave     : Cave temperature
+    !  PCave     : Cave CO2
+    !  DCave     : Cave srip interval
+    ! use:
+    !  TSoil,PSoil,TCave,PCave,DCave = libKOLK.setClimate2D(time,
+    !       timeStart,timeEnd,
+    !       TSoilmin,TSoilmax,
+    !       PSoilmin,PSoilmax,
+    !       TCavemin,TCavemax,
+    !       PCavemin,PCavemax,
+    !       DCavemin,DCavemax,
+    !       rawTimeline,climate)
+    """
+    # climate parameter
+    #print('climate: ',climate)
+    if (climate == 'simple'):
+        TSoil = np.interp(time,[timeStart,timeEnd],[TSoilmin,TSoilmax])
+        PSoil = np.interp(time,[timeStart,timeEnd],[PSoilmin,PSoilmax])
+        TCave = np.interp(time,[timeStart,timeEnd],[TCavemin,TCavemax])
+        PCave = np.interp(time,[timeStart,timeEnd],[PCavemin,PCavemax])
+        DCave = np.interp(time,[timeStart,timeEnd],[DCavemin,DCavemax])
+    elif (climate == 'paleo'):
+        TSoil = np.interp(time,rawTimeline[:,0],rawTimeline[:,1])
+        PSoil = PSoilmin+ (PSoilmax-PSoilmin) * (TSoil-TSoilmin)/(TSoilmax-TSoilmin)
+        TCave = TCavemin+ (TCavemax-TCavemin) * (TSoil-TSoilmin)/(TSoilmax-TSoilmin)
+        PCave = PCavemin+ (PCavemax-PCavemin) * (TSoil-TSoilmin)/(TSoilmax-TSoilmin)
+        DCave = np.log10(DCavemin)+ (np.log10(DCavemax)-np.log10(DCavemin)) * (TSoil-TSoilmin)/(TSoilmax-TSoilmin)
+        DCave = 10**DCave
+    return TSoil,PSoil,TCave,PCave,DCave
 
 
 #================================#
@@ -216,6 +275,7 @@ def growthRate2D(Cin,CEQcave,Dcave,Tsoil,film=0.01e-2,mCaCO3=0.1001 ,rhoCaCO3=27
                * (1-np.exp(-libSTALAGMITE.ALPHA(Tsoil)*Dcave/film))
     return W0
 
+
 #================================#
 def equiRadius2D(Cin,CEQcave,Dcave,Tsoil,film=0.01e-2,Vdrop=0.1e-6):
     """
@@ -243,7 +303,18 @@ def equiRadius2D(Cin,CEQcave,Dcave,Tsoil,film=0.01e-2,Vdrop=0.1e-6):
 
 
 #================================#
-def plotStalagmite2D(stal,iSaved,tSaved,sidex,title='Stalagmite shape'):
+def plotStalagmite2D(stal,iSaved,tSaved,sidex,title='Stalagmite (shape)'):
+    """
+    ! plot shapes of stalagmite for specified times
+    ! input:
+    !   stal     - x- und y-coordinates of saved solution pockets shape
+    !   tSaved   - saved times
+    !   sidex    - length of model domain
+    !   iSaved   - number of saved time steps
+    !   title    - figure title (default: ...)
+    ! output:
+    !   (to file)
+    """
     plt.figure(figsize=(4,6))
     plt.title(title)
     plt.xlim([-sidex/2,sidex/2])
@@ -259,7 +330,7 @@ def plotStalagmite2D(stal,iSaved,tSaved,sidex,title='Stalagmite shape'):
 
 
 #================================#
-def plotStalagmiteAges2D(stal,iSaved,tSaved,sidex,title='Stalagmite (flow)'): 
+def plotStalagmiteAges2D(stal,iSaved,tSaved,sidex,title='Stalagmite (ages)'): 
     import matplotlib
     colors = [
     ( 0 , 0 , 1 ),
